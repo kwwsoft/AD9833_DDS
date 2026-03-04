@@ -13,3 +13,14 @@ doc/view1.png
 doc/AD9833/AD9833.c
 doc/AD9833/AD9833.h
 proteus/
+*.d
+*.o
+*.dep
+/soft/MDK-ARM/STM32F303xC/STM32F303CCT6.build_log.htm
+/soft_PC/afc/.vs/afc/CopilotIndices/18.3.511.5503
+/soft_PC/afc/.vs/afc.slnx/FileContentIndex
+/soft_PC/afc/.vs/afc.slnx/v18/ipch/AutoPCH/447777e150705080
+/soft_PC/afc/.vs/afc.slnx/v18/ipch/AutoPCH
+/soft_PC/afc/.vs/afc.slnx/v18
+/soft_PC/afc/afc/Debug/afc.tlog
+/soft_PC/afc/afc/Debug
