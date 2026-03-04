@@ -11,6 +11,7 @@
 #include "USART\myusart.h" 
 #include "MyADC\myadc.h" 
 #include "encoder\myencoder.h" 
+#include "afc\myafc.h"
 //********************************************************************************************
 //перенаправлення фпрінта в уарт
 /*
@@ -27,13 +28,11 @@ extern volatile uint32_t sysTickCount;
 volatile uint32_t delay_500ms;
 //********************************************************************************************
 const uint8_t c_generator_s[] = "AD9833 Generator\0";
-const uint8_t c_kwwsoft_s[]   = "KWWSoft  (c)2025\0";
+const uint8_t c_kwwsoft_s[]   = "KWWSoft  (c)2026\0";
 //********************************************************************************************
 extern uint16_t v_att;	
 //********************************************************************************************
 uint8_t buf[] = "ready\r\n\0";
-//стрічка частоти  00.000.000 з нулем на кінці [10] = 0x00;
-volatile uint8_t	v_AD9833_freq_char[11];
 //позиція курсора на дисплеї в стрічці частоти
 //йдуть від 0 до 13. поз 2,6, 10,11,12 перескакується
 //13 перемикає форму сигналу
@@ -58,17 +57,16 @@ int main(void){
 	HD44780_Clear();
 	HD44780_Out_String(0, 0, (uint8_t*)c_generator_s);
 	HD44780_Out_String(1, 0, (uint8_t*)c_kwwsoft_s);
-	delay_TIM4_ms(1000);
+	//delay_TIM4_ms(1000);
 	//периферію підняти
 	my_SPI_Init();
 	AD9833_Init();
 	my_Encoder_Init();
 	my_ADC_Init();
-	my_ADC2_Vref_Init();
-	my_USART_Init();
 	//ініціалізація всіх змінних та параметрів
-	//приблизно 1000мВ RMS
-	v_MCP1410_volume = 211;
+	//приблизно 900мВ RMS
+	//79%
+	v_MCP1410_volume = 202;
 	v_enc_percent = (v_MCP1410_volume * 100) / 255;
 	v_AD9833_freq = 465000;
 	v_AD9833_type = AD9833_CMD_SINE;
@@ -101,6 +99,13 @@ int main(void){
 	HD44780_Set_Pos(0, v_fc);
 	HD44780_Set_Cursor(2);
 	//
+	//якщо підключено АЧХ - переходимо туди
+	if (GPIO_ReadInputDataBit(GPIOA, GPIO_Pin_5) == Bit_RESET){
+		HD44780_Clear();
+		my_AFC_Run();
+	}
+
+	
 /*	
 	printf("systick: %d\r\n", sysTickCount);
 

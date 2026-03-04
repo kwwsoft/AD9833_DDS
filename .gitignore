@@ -24,3 +24,8 @@ proteus/
 /soft_PC/afc/.vs/afc.slnx/v18
 /soft_PC/afc/afc/Debug/afc.tlog
 /soft_PC/afc/afc/Debug
+soft_PC/afc/afc.pdb
+soft_PC/afc/afc.vcxproj.filters
+soft/MDK-ARM/STM32F303xC/STM32F303CCT6.htm
+soft/MDK-ARM/STM32F303xC/STM32F303CCT6.lnp
+soft/MDK-ARM/STM32F303xC/STM32F303CCT6.map

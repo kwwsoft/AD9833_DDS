@@ -315,7 +315,7 @@
           </ArmAdsMisc>
           <Cads>
             <interw>1</interw>
-            <Optim>4</Optim>
+            <Optim>1</Optim>
             <oTime>0</oTime>
             <SplitLS>0</SplitLS>
             <OneElfS>1</OneElfS>
@@ -554,6 +554,11 @@
               <FileName>myencoder.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\encoder\myencoder.c</FilePath>
+            </File>
+            <File>
+              <FileName>myafc.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\afc\myafc.c</FilePath>
             </File>
           </Files>
         </Group>

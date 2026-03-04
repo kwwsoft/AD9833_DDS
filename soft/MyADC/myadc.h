@@ -4,9 +4,10 @@
 //-------------------------------------------------------------------
 //-------------------------------------------------------------------
 void my_ADC_Init(void);
-void my_ADC2_Vref_Init(void);
+void my_ADC_Start();
+uint32_t my_Read_Vdda_mV(void);
 uint8_t my_ADC_GetJoystick();
-uint16_t my_ADC2_Vref_Get();
 void my_ADC_MakeVolumeString(uint8_t *buf);
+uint16_t GetAttValue();
 //-------------------------------------------------------------------
 #endif

@@ -2,6 +2,26 @@
 #include "string.h"
 #include "my_global.h"
 //***********************************************
+// --- Function to calculate CRC8 checksum for a given data buffer and length, returns the calculated CRC value ---
+uint8_t CalculateCRC(const uint8_t* pdata, uint8_t len)
+{
+    /*
+    розрахунок контрольної суми по алгоритму црц8
+    рахуються байти переданої довжини
+    на передачу рахувати потрібно до самого байта кс але без нього
+    по прийому рахувати з байтом кс - повинно бути 0
+    */
+    uint8_t crc = 0;
+    for (uint8_t i = 0; i < len; i++) {
+        uint8_t data = pdata[i];
+        for (int j = 8; j > 0; j--) {
+            crc = ((crc ^ data) & 1) ? (crc >> 1) ^ 0x8C : (crc >> 1);
+            data >>= 1;
+        }
+    }
+    return crc;
+}
+//***********************************************
 
 //extern volatile uint32_t v_systick;
 //***********************************************
