@@ -29,3 +29,7 @@ soft_PC/afc/afc.vcxproj.filters
 soft/MDK-ARM/STM32F303xC/STM32F303CCT6.htm
 soft/MDK-ARM/STM32F303xC/STM32F303CCT6.lnp
 soft/MDK-ARM/STM32F303xC/STM32F303CCT6.map
+/soft_PC/afc/afc/Release/afc.vcxproj.FileListAbsolute.txt
+/soft_PC/afc/afc/Release/afc.log
+/soft_PC/afc/afc/Release/afc.exe.recipe
+/soft_PC/afc/afc/Release/afc.Build.CppClean.log
