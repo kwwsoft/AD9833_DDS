@@ -20,10 +20,16 @@ uint16_t stepCountSet;
 uint32_t freqCur;
 //номер поточного кроку по частоті
 uint16_t stepCountCur;
-//амплітуди на виході ген і на виході девайса та відношення Vk = Vdev/Vgen
-double Vgen, Vdev, Vk, Vmax;
+//амплітуди на виході ген і на виході девайса та відношення voltageRatioOutIn = devOutV/genOutV
+double genOutV, devOutV, voltageRatioOutIn;
+//зберігання максимальної вихідної напруги
+double devOutMaxV;
+//накопичення амплітуди на вході для розрахунку середьої
+double genOutSumV;
 //значення атенюатора  1 01 100 1000 з посилки 0х11
 uint16_t Att;
+//------------------------------------------------------------------------------
+void ShowVout();
 //------------------------------------------------------------------------------
 /*
 char buf1[32];
@@ -108,7 +114,7 @@ LRESULT MainWorker::WndProc(UINT msg, WPARAM wParam, LPARAM lParam)
 	{
 		//uint32_t size = (uint32_t)wParam;
 		uint8_t* data = (uint8_t*)lParam;
-		//char buf1[32];
+		//char buf1[64];
 		//sprintf_s(buf1, sizeof(buf1), "%u\r\n", data[2]);
 		//OutputDebugStringA(buf1);
 		//LogFileBinary  logfile("afc_log.bin");
@@ -135,9 +141,16 @@ LRESULT MainWorker::WndProc(UINT msg, WPARAM wParam, LPARAM lParam)
 			break;
 		}
 		//амплітуда на виході генератора
-		Vgen = data[5] << 8 | data[4];
+		genOutV = data[5] << 8 | data[4];
 		//амплітуда на виході девайса
-		Vdev = data[7] << 8 | data[6];
+		devOutV = data[7] << 8 | data[6];
+	
+		//sprintf_s(buf1, sizeof(buf1), "%.0f - ", devOutV);
+		//OutputDebugStringA(buf1);
+		//sprintf_s(buf1, sizeof(buf1), "%.0f\r\n", Att);
+		//OutputDebugStringA(buf1);
+		//сумарна амплітуда
+		genOutSumV += genOutV;
 		//----------------------------
 		//вираховуємо дані для графіку
 		freqCur = userSettings[0] + userSettings[2] * stepCountCur++;
@@ -145,15 +158,27 @@ LRESULT MainWorker::WndProc(UINT msg, WPARAM wParam, LPARAM lParam)
 		//only Vout = 0...1
 		if (GraphControl::GetOnlyVout(hGraph)) {
 			//
-			if (Vmax < Vdev)
-				Vmax = Vdev;
-			pDataTemp.push_back(GraphControl::PointFA(freqCur, Vdev));
+			if (devOutMaxV < devOutV)
+				devOutMaxV = devOutV;
+			pDataTemp.push_back(GraphControl::PointFA(freqCur, devOutV));
 			//
 			if (freqCur > userSettings[1]) {
+				if (devOutMaxV == 0) {
+					devOutMaxV = 0.1;
+				}
 				for (auto d : pDataTemp) {
-					pData.push_back(GraphControl::PointFA(d.x, d.y / Vmax));
+					pData.push_back(GraphControl::PointFA(d.x, d.y / devOutMaxV));
+					//sprintf_s(buf1, sizeof(buf1), "%.0f -> %.0f -> %.3f\r\n", devOutMaxV, d.y,  d.y / devOutMaxV);
+					//OutputDebugStringA(buf1);
 				}
 				GraphControl::SetData(hGraph, pData);
+				//
+				ShowVout();
+				//
+				genOutSumV = 0;
+				//!!!
+				devOutMaxV = 0.001;
+				//
 				stepCountCur = 1;
 				freqCur = userSettings[0];
 				pData.clear();
@@ -163,11 +188,14 @@ LRESULT MainWorker::WndProc(UINT msg, WPARAM wParam, LPARAM lParam)
 		}
 		//Vk = (Vdev / Vgen) / Att
 		else {
-			Vk = (Vdev / Vgen) / Att;
-			pData.push_back(GraphControl::PointFA(freqCur, Vk));
+			voltageRatioOutIn = (devOutV / genOutV) / Att;
+			pData.push_back(GraphControl::PointFA(freqCur, voltageRatioOutIn));
 			//
 			if (freqCur > userSettings[1]) {
 				GraphControl::SetData(hGraph, pData);
+				//
+				ShowVout();
+				//
 				stepCountCur = 1;
 				freqCur = userSettings[0];
 				pData.clear();
@@ -206,7 +234,7 @@ LRESULT MainWorker::WndProc(UINT msg, WPARAM wParam, LPARAM lParam)
 		SendMessageW(hStatus, SB_SETTEXTW, MAKEWPARAM(0, 0), (LPARAM)L"Command 0x04 sent");
 		userSettings[3] = 1; // Встановлюємо статус обміну даними на "запит до генератора відправлено але підтвердження немає"
 		//очікуємо зміну статуса
-		if (!SleepWithMessageProcessing(100, userSettings[3])) // Чекаємо до 2 секунд, поки статус не зміниться
+		if (!SleepWithMessageProcessing(30, userSettings[3])) // Чекаємо до 2 секунд, поки статус не зміниться
 		{
 			SendMessageW(hStatus, SB_SETTEXTW, MAKEWPARAM(0, 0), (LPARAM)L"No response for Vdd request");
 			//return 0; // Якщо статус не змінився, припиняємо обробку
@@ -231,7 +259,7 @@ LRESULT MainWorker::WndProc(UINT msg, WPARAM wParam, LPARAM lParam)
 		}
 		SendMessageW(hStatus, SB_SETTEXTW, MAKEWPARAM(0, 0), (LPARAM)L"Command 0x01 sent");
 		// Чекаємо до 2 секунд, поки статус не зміниться
-		if (!SleepWithMessageProcessing(100, userSettings[3]))
+		if (!SleepWithMessageProcessing(30, userSettings[3]))
 		{
 			SendMessageW(hStatus, SB_SETTEXTW, MAKEWPARAM(0, 0), (LPARAM)L"No response for frequencies set command");
 			//return 0; // Якщо статус не змінився, припиняємо обробку
@@ -252,7 +280,8 @@ LRESULT MainWorker::WndProc(UINT msg, WPARAM wParam, LPARAM lParam)
 		//перерахую по частотах і кроку частоти в число кроків
 		stepCountSet = (userSettings[1] - userSettings[0]) / userSettings[2];
 		stepCountCur = 1;
-		Vmax = 0;
+		devOutMaxV = 0;
+		genOutSumV = 0;
 		//send command
 		SendMessageW(hStatus, SB_SETTEXTW, MAKEWPARAM(0, 0), (LPARAM)L"Send 0x03 command");
 		if (serialPort) {
@@ -291,9 +320,9 @@ LRESULT MainWorker::WndProc(UINT msg, WPARAM wParam, LPARAM lParam)
 		//uint32_t size = (uint32_t)wParam;
 		uint8_t* data = (uint8_t*)lParam;
 		uint32_t vddRaw = (data[5] << 24) | (data[4] << 16) | (data[3] << 8) | data[2];
-		Vdd = vddRaw / 1000.0; //дані в мВ
+		Vdd = vddRaw;// / 1000.0; //дані в мВ
 		wchar_t statusText[64];
-		swprintf(statusText, 64, L"Vdd: %.3f V", Vdd);
+		swprintf(statusText, 64, L"Vdd: %.0f mV", Vdd);
 		SendMessageW(hStatus, SB_SETTEXTW, MAKEWPARAM(2, 0), (LPARAM)statusText);
 		userSettings[3] = 2; // Встановлюємо статус обміну даними на "запит до генератора відправлено і підтвердження є"
 		delete[] data;
@@ -303,3 +332,15 @@ LRESULT MainWorker::WndProc(UINT msg, WPARAM wParam, LPARAM lParam)
 	//обробка
     return DefWindowProc(m_hWnd, msg, wParam, lParam);
 }
+//------------------------------------------------------------------------------------------------------------
+void ShowVout() {
+	genOutSumV *= Vdd;
+	genOutSumV /= (double)stepCountCur;
+	genOutSumV /= 4095;
+	genOutSumV /= Att;
+	wchar_t statusText[64];
+	swprintf(statusText, 64, L"Vout: %.3f mV", genOutSumV);
+	SendMessageW(hStatus, SB_SETTEXTW, MAKEWPARAM(2, 0), (LPARAM)statusText);
+}
+//------------------------------------------------------------------------------------------------------------
+

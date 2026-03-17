@@ -351,19 +351,31 @@ private:
                 if (maxY == minY) maxY += 1.0;
 				
                 // Store for potential future use (e.g., mouse interaction)
+                if (minY == 0)
+                    minY = 0.01;
                 graph->minX = minX;
                 graph->maxX = maxX;
                 graph->minY = minY;
                 graph->maxY = maxY;
+
+                double scaleX;
+                double scaleY;
                 //тільки вихідне від 0 до 1
                 if (graph->bOnlyVout) {
-                    graph->minY = 0;
+                    graph->minY = .01;
                     graph->maxY = 1;
+                    minY = 0.01;
+                    maxY = 1;
+                    // --- Scale factors ---
+                    scaleX = (width - 2.0 * graph->margin) / (maxX - minX);
+                    scaleY = (height - 2.0 * graph->margin) / (maxY - minY);
+                }
+                else {
+                    // --- Scale factors ---
+                    scaleX = (width - 2.0 * graph->margin) / (maxX - minX);
+                    scaleY = (height - 2.0 * graph->margin) / (maxY - minY);
                 }
 
-				// --- Scale factors ---
-                double scaleX = (width - 2.0 * graph->margin) / (maxX - minX);
-                double scaleY = (height - 2.0 * graph->margin) / (maxY - minY);
 				// --- Draw graph line ---
                 HPEN graphPen = CreatePen(PS_SOLID, 2, RGB(0, 100, 255));
                 SelectObject(memDC, graphPen);

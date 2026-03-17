@@ -46,7 +46,7 @@ void my_USART1_Init(void){
 	//allow interrupts from usart
   NVIC_InitStruct.NVIC_IRQChannel = USART1_IRQn;
   NVIC_InitStruct.NVIC_IRQChannelPreemptionPriority = 0;
-	NVIC_InitStruct.NVIC_IRQChannelSubPriority = 5;
+	NVIC_InitStruct.NVIC_IRQChannelSubPriority = 2;
   NVIC_InitStruct.NVIC_IRQChannelCmd = ENABLE;
   NVIC_Init(&NVIC_InitStruct);
 	//

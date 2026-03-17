@@ -30,6 +30,13 @@ void LogFileBinary::writeLogW(const wchar_t* logMessage)
 		fflush(file); // Ensure data is written to the file immediately
 	}
 }
+//double
+void LogFileBinary::writeLog(const double logMessage)
+{
+	wchar_t statusText[64];
+	swprintf(statusText, 64, L"%.3f\r\n", logMessage);
+	writeLogW(statusText);
+}
 // --- Method to write raw bytes to the log file ---
 void LogFileBinary::writeLogBytes(const uint8_t* data, size_t length)
 {

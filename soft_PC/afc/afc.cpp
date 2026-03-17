@@ -6,6 +6,11 @@
 #include <windowsx.h>
 #include <Windows.h>
 #include <string>
+#include <Dbt.h>
+//#include <initguid.h>
+//#include <devguid.h>
+#include <ntddser.h>
+//#include <winioctl.h>
 #include "global.h"
 #include "afc.h"
 #include "LogFileBinary.h"
@@ -56,6 +61,7 @@ HWND hCheckSnapToPoints = nullptr;                 // checkbox прив'язка
 HWND hOnlyVout = nullptr;                          // checkbox яку напругу виводити
 HWND hButtonStart = nullptr;                      // button старт
 HWND hButtonStop = nullptr;                       // button стоп
+HDEVNOTIFY gDevNotify = nullptr;                //COM port notify handle
 //-----------------------------------------------------------------------------
 SerialPort* serialPort = nullptr; // вказівник на об'єкт SerialPort для роботи з послідовним портом
 MainWorker* mainWorkerPtr = nullptr; // вказівник на об'єкт MainWorker для обробки повідомлень з послідовного порта
@@ -66,6 +72,7 @@ BOOL                InitInstance(HINSTANCE, int);
 LRESULT CALLBACK    WndProc(HWND, UINT, WPARAM, LPARAM);
 void CreateMainMenu(HWND hWnd);
 void ChangeControlsState();
+bool CheckAndRestorePortState();
 //-----------------------------------------------------------------------------
 //-----------------------------------------------------------------------------
 int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
@@ -81,12 +88,21 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
     LoadStringW(hInstance, IDC_AFC, szWindowClass, MAX_LOADSTRING);
 	LoadStringW(hInstance, IDS_SNAP_TO_POINT_BOX, szCheckSnapToPointsText, MAX_LOADSTRING);
     LoadStringW(hInstance, IDS_ONLY_VOUT, szOnlyVoutText, MAX_LOADSTRING);
+    //створити графічний контроль для відображення графіка
+    GraphControl::Register(hInstance);
+    //
     MyRegisterClass(hInstance);
     // Perform application initialization:
     if (!InitInstance (hInstance, nCmdShow))
     {
         return FALSE;
     }
+    // Створюємо екземпляр MainWorker для обробки повідомлень з послідовного порта
+    ///створення прихованого вікна, яке не відображається на екрані і не отримує фокус
+    //але має свою чергу повідомлень
+	mainWorkerPtr = new MainWorker(hInstance);
+    //
+    //
     HACCEL hAccelTable = LoadAccelerators(hInstance, MAKEINTRESOURCE(IDC_AFC));
     MSG msg;
     // Main message loop:
@@ -148,14 +164,14 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
    {
       return FALSE;
    }
-   //set main window color to gray
+   //set main window color
    HBRUSH hBrush = CreateSolidBrush(BACKGROUND_COLOR); 
    SetClassLongPtr(hWndMain, GCLP_HBRBACKGROUND, (LONG_PTR)hBrush);
    //
    // Initialize common controls for StatusBar
    INITCOMMONCONTROLSEX icex;
    icex.dwSize = sizeof(icex);
-   icex.dwICC = ICC_BAR_CLASSES;
+   icex.dwICC = ICC_STANDARD_CLASSES;
    InitCommonControlsEx(&icex);
    // Create status bar with
    hStatus = CreateWindowExW(0, STATUSCLASSNAMEW, nullptr,
@@ -183,7 +199,8 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
    int clientAreaWidth = rcClient.right - rcClient.left;
 
    //створити графічний контроль для відображення графіка
-   GraphControl::Register(hInstance);
+   //GraphControl::Register(hInstance);
+   //
    hGraph = CreateWindowExW(0, L"GraphControl", nullptr, WS_CHILD | WS_VISIBLE | WS_BORDER,
        10, 10, clientAreaWidth - 20, clientAreaHeight - 90, hWndMain, nullptr, hInstance, nullptr);
 
@@ -233,20 +250,12 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
         600, clientAreaHeight - statusBarHeight - 20, 190, 21, hWndMain, (HMENU)IDC_ONLY_VOUT, hInstance, nullptr);
 
 
-    // Створюємо екземпляр MainWorker для обробки повідомлень з послідовного порта
-	mainWorkerPtr = new MainWorker(hInstance); 
-    //перевірка та відкриття порта і дозвіл на контроли
+    //дозвіл на контроли
     ChangeControlsState();
-    serialPort = new SerialPort(hWndMain, 262144);
-    if (IniStoreSetting::GetPortAvaliable()) {
-        std::wstring port = L"\\\\.\\";
-        bool opened;
-        port += IniStoreSetting::GetPortName();
-        opened = serialPort->Open(port, 460800);
-        SendMessageW(hStatus, SB_SETTEXTW, MAKEWPARAM(1, 0), (LPARAM)IniStoreSetting::GetPortNameLong().c_str());
-        EnableWindow(hButtonStop, FALSE); // спочатку кнопка "Stop" неактивна
-        EnableWindow(hButtonStart, FALSE); // спочатку кнопка "Start" неактивна, оскільки частоти не встановлені
-    }
+    //якщо збережений порт доступний
+    CheckAndRestorePortState();
+    //дозвіл на контроли
+    ChangeControlsState();
     //читати з налаштувань початкову частоту
     userSettings[0] = std::stoul(IniStoreSetting::LoadFrequencyFrom());
     SetWindowTextW(hEditFreqFrom, IniStoreSetting::LoadFrequencyFrom().c_str());
@@ -308,9 +317,51 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
     {
     case WM_CREATE:
     {
+        //реєстрація повідомлення для слідкування підключення / відключення портів
+        DEV_BROADCAST_DEVICEINTERFACE filter = {};
+        filter.dbcc_size = sizeof(filter);
+        filter.dbcc_devicetype = DBT_DEVTYP_DEVICEINTERFACE;
+        filter.dbcc_classguid = GUID_DEVINTERFACE_COMPORT;
+        gDevNotify = RegisterDeviceNotification(hWndMain, &filter, DEVICE_NOTIFY_WINDOW_HANDLE);
+        //створити головне меню
         CreateMainMenu(hWnd);
-        //відновити попередній вибраний порт
-        IniStoreSetting::RestoreSelectedPort();
+        //створити екземпляр порта
+        serialPort = new SerialPort(hWnd, 262144);
+    }
+    break;
+    //обробка підключення / відключення порта
+    case WM_DEVICECHANGE:
+    {
+        //порт добавився
+        if (wParam == DBT_DEVICEARRIVAL)
+        {
+            //port closed - not work
+            if (!serialPort->GetStatus()) {
+                serialPort->Close();
+                ChangeControlsState();
+                g_ComPorts.clear();
+                CreateMainMenu(hWnd);
+                CheckAndRestorePortState();
+                ChangeControlsState();
+            }
+            //port opened yet
+            else {
+                g_ComPorts.clear();
+                CreateMainMenu(hWnd);
+                CheckAndRestorePortState();
+                ChangeControlsState();
+            }
+        }
+        //порт пропав
+        else if (wParam == DBT_DEVICEREMOVECOMPLETE)
+        {
+            serialPort->Close();
+            ChangeControlsState();
+            g_ComPorts.clear();
+            CreateMainMenu(hWnd);
+            CheckAndRestorePortState();
+            ChangeControlsState();
+        }
     }
     break;
     //
@@ -339,8 +390,20 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
                 //зберегти вибраний порт в файл налаштувань
                 IniStoreSetting::SaveSelectedPort(g_ComPorts[index].first);
                 IniStoreSetting::SetPortNameLong(g_ComPorts[index].second);
-                //response
+                //назву порту на заголовок вікна та на статусбар
+                std::wstring newTitle{ szTitle};
+                newTitle += L" - ";
+                newTitle += IniStoreSetting::GetPortNameLong();
+                SetWindowText(hWndMain, newTitle.c_str());
                 SendMessageW(hStatus, SB_SETTEXTW, MAKEWPARAM(1, 0), (LPARAM)g_ComPorts[index].second.c_str());
+                //дозволити контроли нижче
+                ChangeControlsState();
+                //
+                CheckAndRestorePortState();
+                //дозволити контроли нижче
+                ChangeControlsState();
+                // Set initial focus to the first edit control
+                SetFocus(hEditFreqFrom);
                 break; // handled
             }
             // Parse command:
@@ -506,14 +569,66 @@ void CreateMainMenu(HWND hWnd)
 //-----------------------------------------------------------------------------
 void ChangeControlsState()
 {
-    EnableWindow(hEditFreqFrom, IniStoreSetting::GetPortAvaliable());
-    EnableWindow(hEditFreqTo, IniStoreSetting::GetPortAvaliable());
-    EnableWindow(hButtonStart, IniStoreSetting::GetPortAvaliable());
-    EnableWindow(hButtonStop, IniStoreSetting::GetPortAvaliable());
-    EnableWindow(hComboStepCount, IniStoreSetting::GetPortAvaliable());
-    EnableWindow(hCheckSnapToPoints, IniStoreSetting::GetPortAvaliable());
-    if (!IniStoreSetting::GetPortAvaliable()) {
+    EnableWindow(hEditFreqFrom, serialPort->GetStatus());
+    EnableWindow(hEditFreqTo, serialPort->GetStatus());
+    EnableWindow(hButtonStart, serialPort->GetStatus());
+    EnableWindow(hButtonStop, serialPort->GetStatus());
+    EnableWindow(hComboStepCount, serialPort->GetStatus());
+    EnableWindow(hCheckSnapToPoints, serialPort->GetStatus());
+    if (!serialPort->GetStatus()) {
         SendMessageW(hStatus, SB_SETTEXTW, MAKEWPARAM(1, 0), (LPARAM)L"COM port not open yet");
+        //назву порту на заголовок вікна та на статусбар
+        std::wstring newTitle{ szTitle };
+        newTitle += L" - COM port not open yet";
+        SetWindowText(hWndMain, newTitle.c_str());
     }
 }
 //-----------------------------------------------------------------------------
+bool CheckAndRestorePortState() {
+    //відновити попередній вибраний порт
+    IniStoreSetting::RestoreSelectedPort();
+    //якщо порт зараз не працює - не відкритий
+    if (!serialPort->GetStatus()) {
+        //якщо збережений порт доступний
+        if (IniStoreSetting::GetPortAvaliable()) {
+            std::wstring port = L"\\\\.\\";
+            bool opened;
+            port += IniStoreSetting::GetPortName();
+            opened = serialPort->Open(port, 460800);
+            if (opened) {
+                SendMessageW(hStatus, SB_SETTEXTW, MAKEWPARAM(1, 0), (LPARAM)IniStoreSetting::GetPortNameLong().c_str());
+                EnableWindow(hButtonStop, FALSE); // спочатку кнопка "Stop" неактивна
+                EnableWindow(hButtonStart, FALSE); // спочатку кнопка "Start" неактивна, оскільки частоти не встановлені
+                //
+                std::wstring newTitle{ szTitle };
+                newTitle += L" - ";
+                newTitle += IniStoreSetting::GetPortNameLong();
+                SetWindowText(hWndMain, newTitle.c_str());
+                return true;
+            }
+            else {
+                SendMessageW(hStatus, SB_SETTEXTW, MAKEWPARAM(1, 0), (LPARAM)L"COM port ERROR open");
+                //назву порту на заголовок вікна та на статусбар
+                std::wstring newTitle{ szTitle };
+                newTitle += L" - COM port ERROR open";
+                SetWindowText(hWndMain, newTitle.c_str());
+            }
+        }
+        else {
+            SendMessageW(hStatus, SB_SETTEXTW, MAKEWPARAM(1, 0), (LPARAM)L"COM port not avaliable yet");
+            //назву порту на заголовок вікна та на статусбар
+            std::wstring newTitle{ szTitle };
+            newTitle += L" - COM port not avaliable yet";
+            SetWindowText(hWndMain, newTitle.c_str());
+        }
+    }
+    //якщо порт зараз відкритий і працює
+    else {
+
+    }
+
+    return false;
+}
+
+//-----------------------------------------------------------------------------
+

@@ -38,3 +38,9 @@ soft/MDK-ARM/STM32F303xC/STM32F303CCT6.map
 /soft_PC/afc/afc/Release/afc.ipdb
 *.obj
 *.pdb
+soft/MDK-ARM/JLinkLog.txt
+soft/MDK-ARM/JLinkLog.txt
+soft/MDK-ARM/JLinkLog.txt
+/soft/MDK-ARM/JLinkLog.txt
+/soft_PC/afc/.vs/afc/CopilotIndices/18.4.105.37992
+/soft_PC/afc/afc/Release

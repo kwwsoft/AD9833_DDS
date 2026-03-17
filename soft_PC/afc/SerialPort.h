@@ -59,6 +59,11 @@ public:
         return hWnd;
     }
 
+    //повернути статус порта
+    bool GetStatus() const {
+        return running;
+    }
+
 private:
     void RxWorker();
 

@@ -67,7 +67,6 @@ int main(void){
 	//приблизно 900мВ RMS
 	//79%
 	v_MCP1410_volume = 202;
-	v_enc_percent = (v_MCP1410_volume * 100) / 255;
 	v_AD9833_freq = 465000;
 	v_AD9833_type = AD9833_CMD_SINE;
 	//курсор на частоті на екрані
@@ -90,7 +89,7 @@ int main(void){
 	//тип хвмлі на виході
 	AD9833_ShowType(v_AD9833_type);
 	//амплітуда у відсотках
-	MCP1410_ShowVolume(v_enc_percent);
+	MCP1410_ShowVolume(v_MCP1410_volume);
 	//частота в герцах переводиться в стрічку на дисплеї з крапками
 	v_AD9833_freq_char[10] = 0x00;
 	AD9833_MakeFreqString(v_AD9833_freq, (uint8_t*)v_AD9833_freq_char);
@@ -137,9 +136,8 @@ int main(void){
 		v1 = my_Encoder_Get();
 		if (v1 != enc_static){
 			v_MCP1410_volume = v1;
-			v_enc_percent = (v_MCP1410_volume * 100) / 255;
 			MCP1410_SetVolume(v_MCP1410_volume);
-			MCP1410_ShowVolume(v_enc_percent);
+			MCP1410_ShowVolume(v_MCP1410_volume);
 			HD44780_Set_Pos(0, v_fc);
 		}
 		//
@@ -332,7 +330,7 @@ int main(void){
 				HD44780_Set_Pos(1, 0);
 				HD44780_Out_String(1, 0, (uint8_t*)" ");
 				MCP1410_SetVolume(v_MCP1410_volume);
-				MCP1410_ShowVolume(v_enc_percent);
+				MCP1410_ShowVolume(v_MCP1410_volume);
 				HD44780_Set_Pos(0, v_fc);
 			}
 			//ввімкнути амплітудну модуляцію

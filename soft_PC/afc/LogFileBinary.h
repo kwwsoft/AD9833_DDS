@@ -18,6 +18,7 @@ public:
 	//записати лог у файл
 	void writeLogA(const char* logMessage);
 	void writeLogW(const wchar_t* logMessage);
+	void writeLog(const double logMessage);
 	//записати в лог байти
 	//записати в лог байти
 	void writeLogBytes(const uint8_t* data, size_t length);

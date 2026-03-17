@@ -83,7 +83,7 @@ std::vector<std::pair<std::wstring, std::wstring>> EnumerateComPorts()
 }
 //------------------------------------------------------------------------------
 //затримку очікування з можливістю обробки повідомлень, щоб не блокувати інтерфейс під час очікування відповіді від генератора
-bool SleepWithMessageProcessing(DWORD milliseconds, uint32_t flag)
+bool SleepWithMessageProcessing(DWORD milliseconds, uint32_t &flag)
 {
     DWORD startTime = GetTickCount();
     while (GetTickCount() - startTime < milliseconds)

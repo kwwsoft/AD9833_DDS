@@ -47,18 +47,10 @@ void MCP1410_SetVolume(uint8_t value){
 //------------------------------------------------------------------- 
 void MCP1410_ShowVolume(uint8_t value){
 	uint8_t buf[5];
-	//конверт значення енкодера у відсотках в текст
-/*	IntToChar(buf, value, 3);
-	buf[3] = '%';
-	buf[4] = 0;
-	//погасити спереду непотрібні нулі якщо вини є
-	if (buf[0] == '0'){
-		buf[0] = ' ';
-		if (buf[1] == 0){
-			buf[1] = ' ';
-		}
-	}*/
-	sprintf((char*)buf, "%3d%c", value, '%');
+	//перевести у відсотки
+	v_enc_percent = (value * 100) / 255;
+	//зробити стрічку
+	sprintf((char*)buf, "%3d%c", v_enc_percent, '%');
 	//стрічка зі знаком відсотків на кончику	 
 	HD44780_Out_String(1, 12, buf);
 }

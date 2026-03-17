@@ -20,7 +20,7 @@ uint8_t CalculateCRC(const uint8_t* pdata, size_t len);
 // //enumerate com ports
 std::vector<std::pair<std::wstring, std::wstring>> EnumerateComPorts();
 //затримку очікування з можливістю обробки повідомлень, щоб не блокувати інтерфейс під час очікування відповіді від генератора
-bool SleepWithMessageProcessing(DWORD milliseconds, uint32_t flag);
+bool SleepWithMessageProcessing(DWORD milliseconds, uint32_t &flag);
 //
 std::string WideToUtf8(const wchar_t* wstr);
 std::string WideToANSI(const wchar_t* wstr);

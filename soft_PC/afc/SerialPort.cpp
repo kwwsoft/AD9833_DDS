@@ -53,10 +53,10 @@ bool SerialPort::Open(const std::wstring& port, DWORD baud)
     dcb.fBinary = TRUE;
     dcb.fOutxCtsFlow = FALSE;               //выключаем режим слежения за сигналом CTS
     dcb.fOutxDsrFlow = FALSE;               //выключаем режим слежения за сигналом DSR
-    dcb.fDtrControl = DTR_CONTROL_DISABLE;  //отключаем использование линии DTR
+    dcb.fDtrControl = DTR_CONTROL_ENABLE;  //отключаем использование линии DTR
     dcb.fDsrSensitivity = FALSE;            //отключаем восприимчивость драйвера к состоянию линии DSR
     dcb.fNull = FALSE;                      //разрешить приём нулевых байтов
-    dcb.fRtsControl = RTS_CONTROL_DISABLE;  //отключаем использование линии RTS
+    dcb.fRtsControl = RTS_CONTROL_ENABLE;  //отключаем использование линии RTS
     //dcb.fAbortOnError = FALSE;              //отключаем остановку всех операций чтения/записи при ошибке
 
     if (!SetCommState(hPort, &dcb))

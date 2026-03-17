@@ -9,4 +9,5 @@ AD9833 STM32F303 Generator
 
 (c) KWWSoft
 
-Microsoft Visual Studio 2026 (WINAPI C++)
+Microsoft Visual Studio 2026 (C++ WinAPI)
+Keil µVision v5.37 (C++ ARM Compiler V6.18)

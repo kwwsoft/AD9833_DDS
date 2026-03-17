@@ -1,9 +1,13 @@
 #include "stm32f30x.h"                  // Device header
+#include "..\my_global.h"
+#include "..\encoder/myencoder.h"
 #include "myafc.h"
 //********************************************************************************************
 extern uint16_t v_x, v_y;	
 extern uint16_t v_att;	
 extern uint16_t v_out_adc;	
+//********************************************************************************************
+//#define debug1
 //********************************************************************************************
 uint8_t rxBuf[9];
 uint8_t txBuf[9];
@@ -19,6 +23,18 @@ uint32_t freqCur;
 uint32_t step;
 //work = 1, stop = 0;
 uint8_t WorkStatus;
+//
+uint32_t v_tmp;
+//********************************************************************************************
+void ShowOutLevel(){
+	//рівень сигналу на виході
+	v_tmp = my_Encoder_Get();
+	if (v_tmp != enc_static){
+		v_MCP1410_volume = v_tmp;
+		MCP1410_SetVolume(v_MCP1410_volume);
+		MCP1410_ShowVolume(v_MCP1410_volume);
+	}
+}
 //********************************************************************************************
 void my_AFC_Run(void){
 	//init
@@ -28,11 +44,15 @@ void my_AFC_Run(void){
 	my_USART1_DMA_RX_Init();
 	//my_USART1_DMA_TX_Init();
 	HD44780_Out_String(0, 0, (uint8_t*)"AFC wait command");
+	//рівень сигналу на виході
+	ShowOutLevel();
 	//main loop
 	//з ввімкненою оптимізацією не працює
 	//і while(1) теж
 	label1:;
 		if (rxBuf[1] == 0){
+	    //рівень сигналу на виході
+	    ShowOutLevel();
 		}
 		//сс=01 – передача початкової та кінцевої частоти F (uint_32) 12500000=0хBEBC20
 		else if (rxBuf[1] == 0x01){
@@ -84,6 +104,12 @@ void my_AFC_Run(void){
 						txBuf[3] |= 0b11000000;
 					break;
 				}
+				//debug --------------------------------------
+				#ifdef debug1
+					txBuf[3] &= 0b00111111;
+					txBuf[3] |= 0b00000000;
+				#endif
+				//--------------------------------------------
 				//out gen
 				txBuf[4] = v_out_adc & 0x00FF;
 				txBuf[5] = (v_out_adc & 0xFF00)>>8;
@@ -100,7 +126,8 @@ void my_AFC_Run(void){
 				if (freqCur > freqTo){
 					step = 0;
 					freqCur = freqFrom;
-					delay_TIM4_ms(500);
+					ShowOutLevel();
+					delay_TIM4_ms(400);
 					//break;
 				}
 				rxBufPos = 0;
@@ -169,6 +196,15 @@ void my_AFC_ProcessData(uint8_t *data, uint16_t len){
 				}
 		}
 	
+	}
+	//------ було щось прийнято - дивимось довжину і аналіз
+	//більше 9 байт - значить щось не то. очистка
+	else if (rxBufPos > 9){
+		rxBufPos = 0;
+	}
+	//в буфері є щось до 9-ти байт але початок ще не знайшовся
+	else{
+		rxBufPos = 0;
 	}
 }
 //********************************************************************************************
