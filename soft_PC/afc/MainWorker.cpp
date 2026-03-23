@@ -324,7 +324,7 @@ LRESULT MainWorker::WndProc(UINT msg, WPARAM wParam, LPARAM lParam)
 		wchar_t statusText[64];
 		swprintf(statusText, 64, L"Vdd: %.0f mV", Vdd);
 		SendMessageW(hStatus, SB_SETTEXTW, MAKEWPARAM(2, 0), (LPARAM)statusText);
-		userSettings[3] = 2; // Встановлюємо статус обміну даними на "запит до генератора відправлено і підтвердження є"
+		userSettings[3] = 2; // Встановлюємо статус обміну даними на "запит до генератора відправлено і підтвердження є 
 		delete[] data;
 		return 0;
 	}
